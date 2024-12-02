@@ -1,0 +1,181 @@
+1. Jenkins Setup:
+   Install Jenkins:
+   If using a virtual machine: Follow the Jenkins installation guide for your operating system(https://dev.to/aws-builders/how-to-set-up-jenkins-and-a-pipeline-on-aws-2pak#:~:text=How%20to%20set%20up%20Jenkins%20and%20a%20Pipeline,Jenkins%20...%206%20Step%206.%20Create%20a%20Pipeline).
+   If using a cloud-based service (e.g., AWS, Azure, Google Cloud): You can use a pre-configured Jenkins instance or set it up manually following the respective platform's guide.
+2- Configure Plugins:
+   Install the necessary plugins via the Jenkins Plugin Manager:
+    Git plugin (for Git integration)
+    SonarQube Scanner plugin (for code quality)
+    JaCoCo plugin (for code coverage reporting)
+    OWASP Dependency-Check plugin (for security vulnerabilities)
+    Email Extension plugin (for notifications)
+    Slack Notification plugin (for Slack notifications)
+Navigate to Manage Jenkins > Manage Plugins > Available, search for each plugin, and install them.
+
+3. Source Code Management:
+Git Integration:
+In Jenkins, go to Manage Jenkins > Configure System and configure Git:
+Provide the path to your Git executable (if not detected automatically).
+
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/your-repo.git'
+            }
+        }
+    }
+}
+
+4. Pipeline Creation
+
+pipeline {
+    agent any
+    environment {
+        SONARQUBE = 'SonarQube_Server'
+        JACOCO_REPORT = 'target/jacoco.exec'
+        DEPENDENCY_CHECK = 'dependency-check'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/your-repo.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh './mvnw clean install'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    withSonarQubeEnv(SONARQUBE) {
+                        sh 'mvn sonar:sonar'
+                    }
+                }
+            }
+        }
+
+        stage('Code Coverage') {
+            steps {
+                sh 'mvn jacoco:report'
+            }
+            post {
+                always {
+                    junit '**/target/test-classes/testng-*.xml'
+                    jacoco(execPattern: '**/target/jacoco.exec', classPattern: '**/target/classes', sourcePattern: '**/src/main/java')
+                }
+            }
+        }
+
+        stage('Cyclomatic Complexity') {
+            steps {
+                sh 'lizard --cyclomatic --output=complexity_report.txt src/'
+            }
+            post {
+                always {
+                    archiveArtifacts 'complexity_report.txt'
+                }
+            }
+        }
+
+        stage('Security Vulnerability Scan') {
+            steps {
+                sh 'dependency-check --project "MyProject" --scan . --out reports'
+            }
+            post {
+                always {
+                    archiveArtifacts '**/dependency-check-report.html'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                script {
+                    waitForQualityGate()
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            slackSend channel: '#builds', message: "Build succeeded: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        }
+        failure {
+            slackSend channel: '#builds', message: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        }
+    }
+}
+
+5. Code Quality Checks with SonarQube:
+SonarQube Integration:
+Install and configure a SonarQube server. This can be done either locally or using SonarCloud .
+Configure SonarQube in Jenkins under Manage Jenkins > Configure System. Add SonarQube server details.
+The above Jenkinsfile uses withSonarQubeEnv to run the analysis. Make sure the sonar:sonar Maven goal is invoked as part of your build.
+
+6. Code Coverage with JaCoCo:
+<plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>0.8.7</version>
+    <executions>
+        <execution>
+            <goals>
+                <goal>prepare-agent</goal>
+                <goal>report</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
+In the pipeline, you can ensure the jacoco:report goal runs as part of the build process.
+
+7. Cyclomatic Complexity:
+Lizard Tool for Cyclomatic Complexity:
+Install the Lizard tool for calculating cyclomatic complexity. This can be installed with:
+  > pip install lizard
+The Jenkinsfile contains a step to run Lizard and generate a complexity report, which is archived as an artifact.
+
+8. Security Vulnerability Scan with OWASP Dependency-Check:
+OWASP Dependency-Check
+  <plugin>
+    <groupId>org.owasp</groupId>
+    <artifactId>dependency-check-maven</artifactId>
+    <version>6.6.2</version>
+    <executions>
+        <execution>
+            <goals>
+                <goal>check</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
+The above Jenkinsfile uses dependency-check to run the scan and generate an HTML report.
+
+9. Notifications:
+Email Notifications:
+
+Configure email notifications in Jenkins under Manage Jenkins > Configure System > Extended E-mail Notification.
+In the pipeline, configure the post-build actions to send emails based on build status:
+
+post {
+    success {
+        mail to: 'youremail@example.com', subject: "Build Success", body: "The build was successful."
+    }
+    failure {
+        mail to: 'youremail@example.com', subject: "Build Failure", body: "The build has failed."
+    }
+}
+10 -Slack Notifications:
+
+Configure the Slack plugin in Jenkins. Add your Slack webhook URL in Manage Jenkins > Configure System > Slack.
+In the pipeline, use slackSend to send notifications to a Slack channel.
+
+
+Adding separate images for jacoco and sonarqube
+
