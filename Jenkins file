@@ -22,7 +22,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/your-repo.git'
+                git 'https://<your path>/your-repo.git'
             }
         }
     }
@@ -40,13 +40,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/your-repo.git'
+                git 'https://<your path>/your-repo.git'
             }
         }
 
         stage('Build') {
             steps {
-                sh './mvnw clean install'
+                sh './mvn clean install'
             }
         }
 
@@ -85,7 +85,7 @@ pipeline {
 
         stage('Security Vulnerability Scan') {
             steps {
-                sh 'dependency-check --project "MyProject" --scan . --out reports'
+                sh 'dependency-check --project "<Project name >" --scan . --out reports'
             }
             post {
                 always {
@@ -115,7 +115,7 @@ pipeline {
 
 5. Code Quality Checks with SonarQube:
 SonarQube Integration:
-Install and configure a SonarQube server. This can be done either locally or using SonarCloud .
+Install and configure a SonarQube server. This can be done either locally or using SonarCloud(https://docs.sonarsource.com/sonarqube-server/latest/setup-and-upgrade/install-the-server/introduction/) .
 Configure SonarQube in Jenkins under Manage Jenkins > Configure System. Add SonarQube server details.
 The above Jenkinsfile uses withSonarQubeEnv to run the analysis. Make sure the sonar:sonar Maven goal is invoked as part of your build.
 
@@ -177,5 +177,5 @@ Configure the Slack plugin in Jenkins. Add your Slack webhook URL in Manage Jenk
 In the pipeline, use slackSend to send notifications to a Slack channel.
 
 
-Adding separate images for jacoco and sonarqube
+Adding separate images for jacoco and sonarqube, you can check in root level.
 
